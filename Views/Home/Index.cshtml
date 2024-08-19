@@ -1,0 +1,197 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+<div class="limiter">
+    <div class="container-login100">
+        <div class="wrap-login100">
+            <div class="login100-form-title" style="background-image: url(../images/bg-01.jpg);">
+                <span class="login100-form-title-1" style="margin-bottom:2em;">
+                    Document to PDF Converter
+                </span>
+                <span class="login100-form-title-2">
+                    Convert any MS Word document into a PDF and print the URL of the hyperlink next to the hyperlinked text
+                </span>
+            </div>
+
+            <form id="FormUpload"
+                  enctype="multipart/form-data" method="post" class="login100-form validate-form">
+                <div class="CustomProgress">
+                    <div id="FileProgress"
+                         class="progress-bar" role="progressbar"
+                         aria-valuenow="0" aria-valuemin="0"
+                         aria-valuemax="100" style="width: 0%;">
+                    </div>
+                </div>
+                <div class="drop active">
+                    <a href="javascript:void(0);" class="fileinput-button">
+                        <i class="fa fa-file-word-o pointer-none" aria-hidden="true"></i>
+                        <p class="pointer-none" style="margin-top:5px;color: #57b846;font-weight:bold;">Click here to Browse your document</p>
+                        <p class="pointer-none" style="margin-top:5px;color: #079dd7;">File size must be less than <b>100 MB</b></p>
+                    </a>
+                    <input type="file"
+                           name="UploadedFile" id="UploadedFile" accept="application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
+                </div>
+                <div class="drop">
+                    <div class="InfoContainer">
+                        <i class="fa fa-file-word-o pointer-none" style="color:#00A4EF;" aria-hidden="true"></i>
+                        <div class="info login100-form-title-1" style="margin-top:10px;">
+                            <p><b>File Name:</b><span id="FileName"></span></p>
+                        </div>
+                        <div class="info login100-form-title-1">
+                            <p><b>File Type:</b><span id="FileType"></span></p>
+                        </div>
+                        <div class="info login100-form-title-1">
+                            <p><b>File Size:</b><span id="FileSize"></span></p>
+                        </div>
+                        <div class="info login100-form-title-1" style="margin-top:3%">
+                            <a href="javascript:void(0);" class="clearfile">
+                                <b><p class="pointer-none"><i class="fa fa-trash-o" aria-hidden="true"></i> Clear selected file</p></b>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="info login100-form-title-1 statuscnt">
+                    <p><b>Status:</b><span class="status" style="color:#079dd7;margin-left:3px;">Choose a file to continue</span></p>
+                </div>
+                <div class="container-login100-form-btn">
+                    <button class="login100-form-btn" type="button" id="Submit_btn" disabled>
+                        <i class="glyphicon glyphicon-upload"></i>
+                        <span><b>CONVERT</b></span>
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+
+@section scripts{
+    <script>
+        $(function () {
+            $(document).on('click', '.fileinput-button', function () {
+                $(document).find('#UploadedFile').click();
+            });
+            $(document).on('change', '#UploadedFile', function (e) {
+                var ext = $(this).val().split(".").pop().toLowerCase();
+                var selectedFile = $(this)[0].files[0];
+                if ($.inArray(ext, ["doc", "docx"]) == -1) {
+                    $('.status').html("This file is not supported. Supported files are <b>.doc</b>, <b>.docx</b>").addClass('invalid');
+                    return false;
+                }
+                else if (selectedFile.size > 104857600) {
+                    $('.status').html("File size exceeds the limit. Choose a file of less than <b>100 MB</b>.").addClass('invalid');
+                    return false;
+                }
+                else {
+                    singleFileSelected(e);
+                }
+            });
+            $(document).on('click', '#Submit_btn', function () {
+                UploadFile();
+            });
+            $(document).on('click', '.clearfile:not(.disabled)', function () {
+                $(".status").html("Choose a file to continue").removeClass('invalid');
+                ResetData();
+            });
+        });
+        function ResetData() {
+            $('#UploadedFile').val(null);
+            $("#FileName").text("");
+            $("#FileType").text("");
+            $("#FileSize").text("");
+            $('#Submit_btn').prop('disabled', true);
+            $("#FileProgress").css("width", '0%').attr('aria-valuenow', 0);
+            $('#FileProgress span').text("");
+            $('.clearfile').removeClass('disabled');
+            setTimeout(function () { $(".status").html("Choose a file to continue").removeClass('invalid'); }, 5000);
+            $('.drop').toggleClass('active');
+        }
+        function singleFileSelected(evt) {
+            //var selectedFile = evt.target.files can use this  or select input file element
+            //and access it's files object
+            var selectedFile = ($("#UploadedFile"))[0].files[0];//FileControl.files[0];
+            $('#Submit_btn').prop('disabled', true);
+            if (selectedFile) {
+                var FileSize = 0;
+                var imageType = /image.*/;
+                if (selectedFile.size > 1048576) {
+                    FileSize = Math.round(selectedFile.size * 100 / 1048576) / 100 + " MB";
+                }
+                else if (selectedFile.size > 1024) {
+                    FileSize = Math.round(selectedFile.size * 100 / 1024) / 100 + " KB";
+                }
+                else {
+                    FileSize = selectedFile.size + " Bytes";
+                }
+                $("#FileName").text(selectedFile.name);
+                $("#FileType").text(selectedFile.type);
+                $("#FileSize").text(FileSize);
+                $('#Submit_btn').prop('disabled', false);
+                $('.status').html("Click <b>CONVERT</b> below to start the conversion process.").removeClass('invalid');
+                $('.drop').toggleClass('active');
+            }
+        }
+        function UploadFile() {
+            $('.clearfile').addClass('disabled');
+            $(".status").text("Uploading file...(0%)");
+            $('#Submit_btn').prop('disabled', true);
+            var form = $('#FormUpload')[0];
+            var dataString = new FormData(form);
+            $.ajax({
+                url: '/Home/UploadFiles',  //Server script to process data
+                type: 'POST',
+                xhr: function () {  // Custom XMLHttpRequest
+                    var myXhr = $.ajaxSettings.xhr();
+                    if (myXhr.upload) {
+                        myXhr.upload.addEventListener('progress', progressHandlingFunction, false);
+                    }
+                    return myXhr;
+                },
+                data: dataString,
+                cache: false,
+                contentType: false,
+                processData: false,
+                success: function (result) {
+                    $(".status").text("Converting file. Please wait...");
+                    $.ajax({
+                        url: '/Home/SaveConvertedPdf',
+                        type: 'POST',
+                        contentType: "application/json; charset=utf-8",
+                        data: JSON.stringify({ 'fname': result }),
+                        dataType: 'json',
+                        success: function (fileName) {
+                            if (fileName === "File is corrupted.")
+                                $(".status").html("Can't covert the file. File is corrupt or damaged.").addClass('invalid');
+                            else {
+                                window.location = '/Home/Download?fname=' + fileName;
+                                $(".status").html("File is being downloaded.").removeClass('invalid');
+                            }
+                        },
+                        complete: function () {
+                            ResetData();
+                        }
+                    });
+                },
+                error: function (err) {
+                    console.log(err);
+                    ResetData();
+                }
+            });
+        }
+        function progressHandlingFunction(e) {
+            if (e.lengthComputable) {
+                var percentComplete = Math.round(e.loaded * 100 / e.total);
+                $("#FileProgress").css("width",
+                    percentComplete + '%').attr('aria-valuenow', percentComplete);
+                $(".status").text("Uploading file...(" + percentComplete + "%)");
+                //$('#FileProgress span').text(percentComplete + "%");
+            }
+            else {
+                //$('#FileProgress span').text('unable to compute');
+            }
+        }
+    </script>
+}
